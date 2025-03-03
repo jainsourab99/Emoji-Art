@@ -8,33 +8,66 @@
 import SwiftUI
 
 struct PaletteChooser: View {
-    
     @EnvironmentObject var store: PaletteStore
     
+    @State private var showPaletteEditor = false
+    @State private var showPaletteList = false
+
     var body: some View {
         HStack {
             chooser
             view(for: store.palettes[store.cursorIndex])
         }
         .clipped()
+        .sheet(isPresented: $showPaletteEditor) {
+            PaletteEditor(palette: $store.palettes[store.cursorIndex])
+                .font(nil)
+        }
+        .sheet(isPresented: $showPaletteList) {
+            NavigationStack {
+                EditablePaletteList(store: store)
+                    .font(nil)
+            }
+        }
     }
     
-    var chooser: some View {
+    private var chooser: some View {
         AnimatedActionButton(systemImage: "paintpalette") {
             store.cursorIndex += 1
         }
         .contextMenu {
-            AnimatedActionButton("New Palette", systemImage: "plus") {
-                store.insert(name: "Maths", emojis: "+−∞×÷")
+            gotoMenu
+            AnimatedActionButton("New", systemImage: "plus") {
+                store.insert(name: "", emojis: "")
+                showPaletteEditor = true
             }
-            
             AnimatedActionButton("Delete", systemImage: "minus.circle", role: .destructive) {
                 store.palettes.remove(at: store.cursorIndex)
+            }
+            AnimatedActionButton("Edit", systemImage: "pencil") {
+                showPaletteEditor = true
+            }
+            AnimatedActionButton("List", systemImage: "list.bullet.rectangle.portrait") {
+                showPaletteList = true
             }
         }
     }
     
-    func view(for palette: Palette) -> some View {
+    private var gotoMenu: some View {
+        Menu {
+            ForEach(store.palettes) { palette in
+                AnimatedActionButton(palette.name) {
+                    if let index = store.palettes.firstIndex(where: { $0.id == palette.id }) {
+                        store.cursorIndex = index
+                    }
+                }
+            }
+        } label: {
+            Label("Go To", systemImage: "text.insert")
+        }
+    }
+    
+    private func view(for palette: Palette) -> some View {
         HStack {
             Text(palette.name)
             ScrollingEmojis(palette.emojis)
@@ -63,7 +96,9 @@ struct ScrollingEmojis: View {
     }
 }
 
-#Preview {
-    PaletteChooser()
-        .environmentObject(PaletteStore(named: "Main"))
+struct PaletteChooser_Previews: PreviewProvider {
+    static var previews: some View {
+        PaletteChooser()
+            .environmentObject(PaletteStore(named: "Preview"))
+    }
 }
